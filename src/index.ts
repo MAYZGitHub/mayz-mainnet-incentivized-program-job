@@ -35,7 +35,11 @@ main().catch((err) => {
 
 // --- MAIN LOGIC ---
 async function main() {
+
+    const nowDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
     console.log('--- MAYZ Incentivized Program Cron Job START ---');
+    console.log(`[DATE] ${nowDate}`);
 
     // --- GOVERNANCE DB PHASE ---
     await connectDb(MONGO_URLDB_GOVERNANCE, 'Governance');
@@ -329,7 +333,7 @@ async function main() {
     // Save user task points to Supabase
     if (userTaskPoints.length > 0) {
         try {
-            // await saveUserTaskPoints(userTaskPoints);
+            // await saveUserTaskPoints(userTaskPoints, nowDate);
             console.log(`[SUPABASE] Successfully saved ${userTaskPoints.length} user task points.`);
         } catch (err) {
             console.error(`[SUPABASE] Error saving user task points:`, err);
