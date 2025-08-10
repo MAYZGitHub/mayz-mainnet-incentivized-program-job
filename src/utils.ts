@@ -60,10 +60,11 @@ export function getSupabaseClient(): SupabaseClient {
     }
 }
 
-export async function isPaymentPKHRegistered(paymentPKH: string) {
+export async function isSharedOnXTxHash(walletAddress: string, txHash: string) {
     try {
         const supabase = getSupabaseClient();
-        const { data, error } = await supabase.from('shareonx').select('paymentPKH').eq('paymentPKH', paymentPKH).single();
+
+        const { data, error } = await supabase.from('shareonx').select('user_address').eq('user_address', walletAddress).eq('tx_hash', txHash).single();
 
         if (error) {
             // Not found or other error
@@ -71,7 +72,7 @@ export async function isPaymentPKHRegistered(paymentPKH: string) {
         }
         return !!data;
     } catch (error) {
-        console.error(`Error checking registration: ${error}`);
+        console.error(`Error checking shared on X: ${error}`);
         return false;
     }
 }

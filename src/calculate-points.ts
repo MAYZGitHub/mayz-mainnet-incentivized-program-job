@@ -23,7 +23,7 @@ import { IFund } from './models/fund.model.js';
 import { ISwapOffer } from './models/swap-offer.model.js';
 import { ITransaction } from './models/transaction.model.js';
 import { getTokenPriceInLovelace } from './tokenPrices.js';
-import { scriptHashFromAddress, toJson } from './utils.js';
+import { isSharedOnXTxHash, scriptHashFromAddress, toJson } from './utils.js';
 
 async function checkInputFromWallet(data: any, walletAddress: string): Promise<boolean> {
     // Fetch UTXOs for input address check
@@ -46,6 +46,8 @@ export async function task01_calculateRegistration(
 ): Promise<{ amount: number; currentAmount: number; isValid: boolean; points: number }> {
     // Validate registration using txs from Mongo, not utxos by address
     let totalGMAYZ = 0;
+    let isSharedOnX = false;
+
     for (const tx of task1Txs) {
         try {
             if (!tx.hash) {
@@ -77,9 +79,14 @@ export async function task01_calculateRegistration(
                     }
                     foundValidRedeemer = true;
                     totalGMAYZ += Number(redeemerObj.rsaxfAmount_FT - redeemerObj.rsaxfCommission_FT) / 1_000_000;
+
                     console.log(
                         `[TASK1] Added ${redeemerObj.rsaxfAmount_FT - redeemerObj.rsaxfCommission_FT} FT from tx ${tx.hash} (wallet: ${walletAddress}) [Total: ${totalGMAYZ}]`
                     );
+                    // Check registration in shareonx table before awarding registration points
+                    const tempIsSharedOnX = await isSharedOnXTxHash(walletAddress, tx.hash);
+                    isSharedOnX = isSharedOnX || tempIsSharedOnX;
+                    console.log(`[TASK1] SharedOnX Tx [${tx.hash}]: ${tempIsSharedOnX}`);
                     break;
                 }
                 if (!foundValidRedeemer) {
@@ -98,8 +105,11 @@ export async function task01_calculateRegistration(
     const minRequired = REGISTRATION_MIN_GMAYZ;
     const minAmount = Math.min(amount, currentAmount);
     const points = 0;
-    if (minAmount < minRequired) {
+    if (minAmount < minRequired ) {
         console.warn(`[TASK1][✗] Not enough gMAYZ for ${paymentPKH} (gMAYZ: ${minAmount})`);
+        return { isValid: false, amount, currentAmount, points };
+    } else if (!isSharedOnX) {
+        console.warn(`[TASK1][✗] Not shared on X for ${paymentPKH}`);
         return { isValid: false, amount, currentAmount, points };
     } else {
         console.log(`[TASK1][✓] Valid for ${paymentPKH} (gMAYZ: ${minAmount})`);

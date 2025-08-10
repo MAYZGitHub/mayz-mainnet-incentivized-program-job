@@ -21,7 +21,7 @@ import { ProtocolModel } from './models/protocol.model.js';
 import { ISwapOffer, SwapOfferModel } from './models/swap-offer.model.js';
 import { ITransaction, TransactionModel } from './models/transaction.model.js';
 import { WalletModel } from './models/wallet.model.js';
-import { connectDb, disconnectDb, isPaymentPKHRegistered, saveUserTaskPoints } from './utils.js';
+import { connectDb, disconnectDb, isSharedOnXTxHash, saveUserTaskPoints } from './utils.js';
 
 // --- MAYZ Incentivized Program Cron Job ---
 // This script aggregates, checks, and scores all users for the incentive program, as per the detailed requirements.
@@ -207,12 +207,6 @@ async function main() {
                     const task1Result = await task01_calculateRegistration(paymentPKH, walletInfo.address, gMAYZHeld, protocolInGov.pdpSwapOfferValidator_AddressMainnet, task1Txs);
                     const finalPoints = task1Result.points * multiplier;
 
-                    // Check registration in shareonx table before awarding registration points
-                    const isRegistered = true;
-                    // const isRegistered = await isPaymentPKHRegistered(paymentPKH);
-                    if (!isRegistered) {
-                        console.log(`[TASK1] PKH ${paymentPKH} is NOT registered in shareonx. Skipping registration points.`);
-                    }
                     userTaskPoints.push({
                         date: nowDate,
                         paymentPKH: paymentPKH.slice(0, 6),
@@ -224,7 +218,7 @@ async function main() {
                         amount: task1Result.amount,
                         points: task1Result.points,
                         currentAmount: task1Result.currentAmount,
-                        isValid: task1Result.isValid && isRegistered,
+                        isValid: task1Result.isValid,
                         finalPoints,
                     });
                 }
