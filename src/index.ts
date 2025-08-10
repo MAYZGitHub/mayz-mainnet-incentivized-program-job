@@ -366,7 +366,7 @@ async function main() {
             incompleted,
         };
     });
-    const summaryList = userTotals.sort((a, b) => b.points - a.points);
+    const summaryList = userTotals.sort((a, b) => b.finalPoints - a.finalPoints);
     const printableSummary = summaryList.map((entry) => ({
         ...entry,
         completed: entry.completed.join(', '),
