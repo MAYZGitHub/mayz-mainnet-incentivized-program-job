@@ -144,6 +144,7 @@ async function main() {
 
     // --- POINTS CALCULATION PHASE ---
     const userTaskPoints: Array<{
+        date: string;
         paymentPKH: string;
         stakePKH: string;
         address: string;
@@ -213,6 +214,7 @@ async function main() {
                         console.log(`[TASK1] PKH ${paymentPKH} is NOT registered in shareonx. Skipping registration points.`);
                     }
                     userTaskPoints.push({
+                        date: nowDate,
                         paymentPKH: paymentPKH.slice(0, 6),
                         stakePKH: walletInfo.stake.slice(0, 6),
                         address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
@@ -244,6 +246,7 @@ async function main() {
                     );
                     const finalPoints = task2Result.points * multiplier;
                     userTaskPoints.push({
+                        date: nowDate,
                         paymentPKH: paymentPKH.slice(0, 6),
                         stakePKH: walletInfo.stake.slice(0, 6),
                         address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
@@ -275,6 +278,7 @@ async function main() {
                     );
                     const finalPoints = task3Result.points * multiplier;
                     userTaskPoints.push({
+                        date: nowDate,
                         paymentPKH: paymentPKH.slice(0, 6),
                         stakePKH: walletInfo.stake.slice(0, 6),
                         address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
@@ -299,6 +303,7 @@ async function main() {
                     const task4Result = await task04_calculateStake(paymentPKH, walletInfo.address, allDelegations, protocolInDapp.pdpDelegationValidator_AddressMainnet, task4Txs);
                     const finalPoints = task4Result.points * multiplier;
                     userTaskPoints.push({
+                        date: nowDate,
                         paymentPKH: paymentPKH.slice(0, 6),
                         stakePKH: walletInfo.stake.slice(0, 6),
                         address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
@@ -333,7 +338,7 @@ async function main() {
     // Save user task points to Supabase
     if (userTaskPoints.length > 0) {
         try {
-            // await saveUserTaskPoints(userTaskPoints, nowDate);
+            // await saveUserTaskPoints(userTaskPoints);
             console.log(`[SUPABASE] Successfully saved ${userTaskPoints.length} user task points.`);
         } catch (err) {
             console.error(`[SUPABASE] Error saving user task points:`, err);
@@ -359,6 +364,7 @@ async function main() {
             ...allTasks.filter(t => !presentTasks.has(t)),
         ];
         return {
+            date: first.date,
             paymentPKH: first.paymentPKH,
             stakePKH: first.stakePKH,
             address: first.address,

@@ -76,10 +76,11 @@ export async function isPaymentPKHRegistered(paymentPKH: string) {
     }
 }
 
-export async function saveUserTaskPoints(userTaskPoints: any[], nowDate: string) {
+export async function saveUserTaskPoints(userTaskPoints: any[]) {
     try {
         // Map input objects to the exact user_task_points table schema
         const mappedRows = userTaskPoints.map(pt => ({
+            date: pt.date,
             paymentPKH: pt.paymentPKH,
             stakePKH: pt.stakePKH,
             address: pt.address,
@@ -91,7 +92,6 @@ export async function saveUserTaskPoints(userTaskPoints: any[], nowDate: string)
             currentAmount: pt.currentAmount,
             isValid: pt.isValid,
             finalPoints: pt.finalPoints,
-            calculation_date: nowDate
             // created_at is handled by the DB default
         }));
 
