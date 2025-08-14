@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { ITransaction } from './models/transaction.model.js';
 import { SupabaseClient, createClient } from '@supabase/supabase-js';
 import { CML } from '@lucid-evolution/lucid';
+import { IUserTaskPoints } from './types.js';
 
 // --- CONFIG HELPERS ---
 export function requireEnv(name: string): string {
@@ -64,7 +65,8 @@ export async function isSharedOnXTxHash(walletAddress: string, txHash: string) {
     try {
         const supabase = getSupabaseClient();
 
-        const { data, error } = await supabase.from('shareonx').select('user_address').eq('user_address', walletAddress).eq('tx_hash', txHash).single();
+        
+        const { data, error } = await supabase.from('x_shares').select('user_address').eq('user_address', walletAddress).eq('tx_hash', txHash).single();
 
         if (error) {
             // Not found or other error
@@ -77,7 +79,7 @@ export async function isSharedOnXTxHash(walletAddress: string, txHash: string) {
     }
 }
 
-export async function saveUserTaskPoints(userTaskPoints: any[]) {
+export async function saveUserTaskPoints(userTaskPoints: IUserTaskPoints[]) {
     try {
         // Map input objects to the exact user_task_points table schema
         const mappedRows = userTaskPoints.map(pt => ({
@@ -88,6 +90,7 @@ export async function saveUserTaskPoints(userTaskPoints: any[]) {
             gMAYZHeld: pt.gMAYZHeld,
             multiplier: pt.multiplier,
             task: pt.task,
+            amountUnit: pt.amountUnit,
             amount: pt.amount,
             currentAmount: pt.currentAmount,
             points: pt.points,
@@ -159,4 +162,13 @@ export function toJson(value: any, replacer?: (this: any, key: string, value: an
         },
         space
     );
+}
+
+
+// Robust UTC date formatting helper
+export function formatDateUTC(date: Date): string {
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }

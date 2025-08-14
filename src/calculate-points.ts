@@ -17,13 +17,13 @@ import {
     fetchAndParseSwapOfferDatum,
     fetchAndParseSwapOfferRedeemerDeposit,
     fetchAndParseSwapOfferRedeemerSwapADAxFT,
-} from './datumsAndRedeemers.js';
+} from './types.js';
 import { IDelegation } from './models/delegation.model.js';
 import { IFund } from './models/fund.model.js';
 import { ISwapOffer } from './models/swap-offer.model.js';
 import { ITransaction } from './models/transaction.model.js';
-import { getTokenPriceInLovelace } from './tokenPrices.js';
-import { isSharedOnXTxHash, scriptHashFromAddress, toJson } from './utils.js';
+import { getTokenHistoricPricesInLovelace, getTokenPriceInLovelace } from './tokenPrices.js';
+import { formatDateUTC, isSharedOnXTxHash, scriptHashFromAddress, toJson } from './utils.js';
 
 async function checkInputFromWallet(data: any, walletAddress: string): Promise<boolean> {
     // Fetch UTXOs for input address check
@@ -105,7 +105,7 @@ export async function task01_calculateRegistration(
     const minRequired = REGISTRATION_MIN_GMAYZ;
     const minAmount = Math.min(amount, currentAmount);
     const points = 0;
-    if (minAmount < minRequired ) {
+    if (minAmount < minRequired) {
         console.warn(`[TASK1][✗] Not enough gMAYZ for ${paymentPKH} (gMAYZ: ${minAmount})`);
         return { isValid: false, amount, currentAmount, points };
     } else if (!isSharedOnX) {
@@ -118,6 +118,7 @@ export async function task01_calculateRegistration(
 }
 
 // --- Task 2: Swap Offers Points Calculation ---
+
 /**
  * Calculates Task 2 swap offer points for a user, following incentivized program rules.
  * @param paymentPKH The user's payment public key hash
@@ -136,8 +137,7 @@ export async function task02_calculateSwapOffers(
     task2Txs: ITransaction[]
 ): Promise<{ amount: number; currentAmount: number; isValid: boolean; points: number }> {
     // --- 1. Calculate 'amount': sum of SWAPOFFER_CREATE and SWAPOFFER_DEPOSIT TXs (FT as ADA + ADA) ---
-    let totalFTByUnit: Record<string, number> = {};
-    let totalADA = 0;
+    let amount = 0;
 
     for (const tx of task2Txs) {
         try {
@@ -178,14 +178,30 @@ export async function task02_calculateSwapOffers(
                         typeof swapOfferDatum.sodAmount_FT_Available === 'bigint'
                             ? Number(swapOfferDatum.sodAmount_FT_Available)
                             : parseInt(swapOfferDatum.sodAmount_FT_Available || '0', 10);
-                    if (!totalFTByUnit[ftUnit]) totalFTByUnit[ftUnit] = 0;
-                    totalFTByUnit[ftUnit] += ftAmount;
                     // ADA from datum
                     const adaAmount =
                         typeof swapOfferDatum.sodAmount_ADA_Available === 'bigint'
                             ? Number(swapOfferDatum.sodAmount_ADA_Available)
                             : parseInt(swapOfferDatum.sodAmount_ADA_Available || '0', 10);
-                    totalADA += adaAmount;
+                    // Get tx date (YYYY-MM-DD)
+                    const txDate = tx.date ? formatDateUTC(tx.date) : null;
+                    if (!txDate) throw new Error(`Missing tx.date for ${tx.hash}`);
+                    // Get historic price for FT on txDate
+                    let ftAda = 0;
+                    if (ftAmount > 0) {
+                        const historicPrices = await getTokenHistoricPricesInLovelace(ftUnit);
+                        const priceObj = historicPrices.find(p => formatDateUTC(new Date(Number(p.date))) === txDate);
+                        if (!priceObj) throw new Error(`No historic price for ${ftUnit} on ${txDate}`);
+                        ftAda = (ftAmount * Number(priceObj.price)) / 1_000_000 / 1_000_000;
+                        amount += ftAda;
+                        console.log(`[TASK2][HIST] Added ${ftAmount} ${ftUnit} at ${priceObj.price} lovelace (${txDate}) = ${ftAda} ADA`);
+                    }
+                    // ADA is always 1:1
+                    if (adaAmount > 0) {
+                        const ada = adaAmount / 1_000_000;
+                        amount += ada;
+                        console.log(`[TASK2][HIST] Added ${adaAmount} lovelace ADA = ${ada} ADA (${txDate})`);
+                    }
                     break;
                 }
                 if (!foundValidDatum) {
@@ -228,10 +244,24 @@ export async function task02_calculateSwapOffers(
                     if (!foundValidDatum) {
                         throw new Error(`No valid SwapOffer datum found for tx ${tx.hash}`);
                     }
-                    if (!totalFTByUnit[ftUnit!]) totalFTByUnit[ftUnit!] = 0;
-                    totalFTByUnit[ftUnit!] += Number(redeemerObj.rdNewDeposit_FT);
-                    // ADA from redeemer
-                    totalADA += Number(redeemerObj.rdNewDeposit_ADA);
+                    // Get tx date (YYYY-MM-DD)
+                    const txDate = tx.date ? formatDateUTC(tx.date) : null;
+                    if (!txDate) throw new Error(`Missing tx.date for ${tx.hash}`);
+                    let ftAda = 0;
+                    if (redeemerObj.rdNewDeposit_FT > 0n && ftUnit) {
+                        const historicPrices = await getTokenHistoricPricesInLovelace(ftUnit);
+                        const priceObj = historicPrices.find(p => formatDateUTC(new Date(Number(p.date))) === txDate);
+                        if (!priceObj) throw new Error(`No historic price for ${ftUnit} on ${txDate}`);
+                        ftAda = (Number(redeemerObj.rdNewDeposit_FT) * Number(priceObj.price)) / 1_000_000 / 1_000_000;
+                        amount += ftAda;
+                        console.log(`[TASK2][HIST] Added ${Number(redeemerObj.rdNewDeposit_FT)} ${ftUnit} at ${priceObj.price} lovelace (${txDate}) = ${ftAda} ADA`);
+                    }
+                    // ADA is always 1:1
+                    if (redeemerObj.rdNewDeposit_ADA > 0n) {
+                        const ada = Number(redeemerObj.rdNewDeposit_ADA) / 1_000_000;
+                        amount += ada;
+                        console.log(`[TASK2][HIST] Added ${Number(redeemerObj.rdNewDeposit_ADA)} lovelace ADA = ${ada} ADA (${txDate})`);
+                    }
                     break;
                 }
                 if (!foundValidRedeemer) {
@@ -245,17 +275,6 @@ export async function task02_calculateSwapOffers(
         }
     }
     console.log(`\n[TASK2] Calculating points for ${paymentPKH}`);
-    // Convert FT to ADA using getTokenPriceInLovelace
-    let amountFTasADA = 0;
-    for (const unit of Object.keys(totalFTByUnit)) {
-        const priceLovelace = Number(await getTokenPriceInLovelace(unit));
-        amountFTasADA += (totalFTByUnit[unit] * priceLovelace) / 1_000_000 / 1_000_000;
-        console.log(`[TASK2] Added ${totalFTByUnit[unit]} ${unit} at ${priceLovelace} lovelace = ${amountFTasADA} ADA`);
-    }
-    // ADA is already in lovelace, convert to ADA
-    const amountADA = totalADA / 1_000_000;
-    console.log(`[TASK2] Added ${totalADA} lovelace ADA = ${amountADA} ADA`);
-    const amount = amountFTasADA + amountADA;
     console.log(`[TASK2] Amount: ${amount} ADA`);
 
     // --- 2. Calculate 'current amount': sum of all active swap offers for user (FT as ADA + ADA) ---
@@ -288,9 +307,22 @@ export async function task02_calculateSwapOffers(
 
     // --- 3. Points calculation with minimum threshold ---
     const minRequired = SWAPOFFER_MIN_ADA;
-    const minAmount = Math.min(amount, currentAmount);
+    // const minAmount = Math.min(amount, currentAmount);
+    // Desde ahora, voy a respectar el valor de entrada para ver si entro con m;as de 500 ADA
+    // Y al precio de cada momento, para ser justo con el usuario si los precios cambian
+    // Y con respecto a mantenerlas activas, solo voy a verificar que el valor total de las 
+    // swap offers activas sea mayor a 0 ADA, o sea, que haya algo
+    const minAmount = amount;
     if (minAmount < minRequired) {
-        console.warn(`[TASK2][✗] Not enough ADA for ${paymentPKH} (ADA: ${minAmount})`);
+        console.warn(`[TASK2][✗] Not enough ADA in Created Swap Offers for ${paymentPKH} (ADA: ${minAmount})`);
+        return {
+            isValid: false,
+            amount,
+            currentAmount,
+            points: 0,
+        };
+    } else if (currentAmount <= 0) {
+        console.warn(`[TASK2][✗] Not enough ADA in Current Swap Offers for ${paymentPKH} (ADA: ${minAmount})`);
         return {
             isValid: false,
             amount,
