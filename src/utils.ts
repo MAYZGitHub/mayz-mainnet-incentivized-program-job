@@ -89,8 +89,8 @@ export async function saveUserTaskPoints(userTaskPoints: any[]) {
             multiplier: pt.multiplier,
             task: pt.task,
             amount: pt.amount,
-            points: pt.points,
             currentAmount: pt.currentAmount,
+            points: pt.points,
             isValid: pt.isValid,
             finalPoints: pt.finalPoints,
             // created_at is handled by the DB default

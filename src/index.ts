@@ -152,8 +152,8 @@ async function main() {
         multiplier: number;
         task: string;
         amount: number;
-        points: number;
         currentAmount: number;
+        points: number;
         isValid: boolean;
         finalPoints: number;
     }> = [];
@@ -216,8 +216,8 @@ async function main() {
                         multiplier,
                         task: 'registration',
                         amount: task1Result.amount,
-                        points: task1Result.points,
                         currentAmount: task1Result.currentAmount,
+                        points: task1Result.points,
                         isValid: task1Result.isValid,
                         finalPoints,
                     });
@@ -248,8 +248,8 @@ async function main() {
                         multiplier,
                         task: 'swap_offer',
                         amount: task2Result.amount,
-                        points: task2Result.points,
                         currentAmount: task2Result.currentAmount,
+                        points: task2Result.points,
                         isValid: task2Result.isValid,
                         finalPoints,
                     });
@@ -280,8 +280,8 @@ async function main() {
                         multiplier,
                         task: 'hold_ft',
                         amount: task3Result.amount,
-                        points: task3Result.points,
                         currentAmount: task3Result.currentAmount,
+                        points: task3Result.points,
                         isValid: task3Result.isValid,
                         finalPoints,
                     });
@@ -305,8 +305,8 @@ async function main() {
                         multiplier,
                         task: 'stake_fund',
                         amount: task4Result.amount,
-                        points: task4Result.points,
                         currentAmount: task4Result.currentAmount,
+                        points: task4Result.points,
                         isValid: task4Result.isValid,
                         finalPoints,
                     });
