@@ -13,7 +13,7 @@ import {
     SWAPOFFER_CREATE,
     SWAPOFFER_DEPOSIT,
     SWAPOFFER_SWAP_ADA_FT,
-    TASK_MAX_POINTS,
+    INCENTIVIZED_PROGRAM_START_DATE
 } from './constants.js';
 import { DelegationModel, IDelegation } from './models/delegation.model.js';
 import { FundModel, IFund } from './models/fund.model.js';
@@ -21,7 +21,8 @@ import { ProtocolModel } from './models/protocol.model.js';
 import { ISwapOffer, SwapOfferModel } from './models/swap-offer.model.js';
 import { ITransaction, TransactionModel } from './models/transaction.model.js';
 import { WalletModel } from './models/wallet.model.js';
-import { connectDb, disconnectDb, isSharedOnXTxHash, saveUserTaskPoints } from './utils.js';
+import { connectDb, disconnectDb } from './utils.js';
+import { IUserTaskPoints } from './types.js';
 
 // --- MAYZ Incentivized Program Cron Job ---
 // This script aggregates, checks, and scores all users for the incentive program, as per the detailed requirements.
@@ -35,7 +36,6 @@ main().catch((err) => {
 
 // --- MAIN LOGIC ---
 async function main() {
-
     const nowDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     console.log('--- MAYZ Incentivized Program Cron Job START ---');
@@ -56,7 +56,7 @@ async function main() {
     const govUsers: string[] = await TransactionModel.distinct('paymentPKH', {
         type: { $in: relevantTypesInGov },
         status: 'confirmed',
-        date: { $gte: new Date('2024-01-01') },
+        date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) },
     });
     console.log(`[GOV DB] Found ${govUsers.length} unique wallets with relevant tx types in Governance DB`);
     // Fetch all relevant governance transactions per user
@@ -76,7 +76,7 @@ async function main() {
             console.warn(`[GOV DB][WALLET][WARN] No wallet info for PKH: ${paymentPKH}`);
         }
 
-        const txs = await TransactionModel.find({ paymentPKH, type: { $in: relevantTypesInGov }, status: 'confirmed', date: { $gte: new Date('2024-01-01') } }, null, {
+        const txs = await TransactionModel.find({ paymentPKH, type: { $in: relevantTypesInGov }, status: 'confirmed', date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) } }, null, {
             sort: { date: 1 },
         });
         govTxsByUser[paymentPKH] = txs;
@@ -107,7 +107,7 @@ async function main() {
     const dappUsers: string[] = await TransactionModel.distinct('paymentPKH', {
         type: { $in: relevantTypesInDapp },
         status: 'confirmed',
-        date: { $gte: new Date('2024-01-01') },
+        date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) },
     });
     console.log(`[DAPP DB] Found ${dappUsers.length} unique wallets with relevant tx types in Dapp DB`);
     // Fetch all relevant dapp transactions per user
@@ -126,7 +126,7 @@ async function main() {
         } else {
             console.warn(`[DAPP DB][WALLET][WARN] No wallet info for PKH: ${paymentPKH} - ${walletDoc}`);
         }
-        const txs = await TransactionModel.find({ paymentPKH, type: { $in: relevantTypesInDapp }, status: 'confirmed', date: { $gte: new Date('2024-01-01') } }, null, {
+        const txs = await TransactionModel.find({ paymentPKH, type: { $in: relevantTypesInDapp }, status: 'confirmed', date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) } }, null, {
             sort: { date: 1 },
         });
         dappTxsByUser[paymentPKH] = txs;
@@ -143,21 +143,10 @@ async function main() {
     console.log(`\n[WALLETS] Total unique wallets to process: ${allWallets.length}`);
 
     // --- POINTS CALCULATION PHASE ---
-    const userTaskPoints: Array<{
-        date: string;
-        paymentPKH: string;
-        stakePKH: string;
-        address: string;
-        gMAYZHeld: number;
-        multiplier: number;
-        task: string;
-        amount: number;
-        currentAmount: number;
-        points: number;
-        isValid: boolean;
-        finalPoints: number;
-    }> = [];
-    
+
+
+const userTaskPoints: IUserTaskPoints[] = [];
+
     // Main per-user loop
     for (const paymentPKH of allWallets) {
         try {
@@ -215,6 +204,7 @@ async function main() {
                         gMAYZHeld,
                         multiplier,
                         task: 'registration',
+                        amountUnit: 'GMAYZ',
                         amount: task1Result.amount,
                         currentAmount: task1Result.currentAmount,
                         points: task1Result.points,
@@ -247,6 +237,7 @@ async function main() {
                         gMAYZHeld,
                         multiplier,
                         task: 'swap_offer',
+                        amountUnit: 'ADA', 
                         amount: task2Result.amount,
                         currentAmount: task2Result.currentAmount,
                         points: task2Result.points,
@@ -279,6 +270,7 @@ async function main() {
                         gMAYZHeld,
                         multiplier,
                         task: 'hold_ft',
+                        amountUnit: 'ADA',  
                         amount: task3Result.amount,
                         currentAmount: task3Result.currentAmount,
                         points: task3Result.points,
@@ -304,6 +296,7 @@ async function main() {
                         gMAYZHeld,
                         multiplier,
                         task: 'stake_fund',
+                        amountUnit: 'GMAYZ', 
                         amount: task4Result.amount,
                         currentAmount: task4Result.currentAmount,
                         points: task4Result.points,
@@ -341,7 +334,7 @@ async function main() {
 
     // Print summary: aggregate by paymentPKH with full details
     const allTasks = ['registration', 'swap_offer', 'hold_ft', 'stake_fund'];
-    const userMap: Record<string, typeof userTaskPoints[0][]> = {};
+    const userMap: Record<string, IUserTaskPoints[]> = {};
     for (const entry of userTaskPoints) {
         if (!userMap[entry.paymentPKH]) userMap[entry.paymentPKH] = [];
         userMap[entry.paymentPKH].push(entry);
@@ -349,14 +342,11 @@ async function main() {
     const userTotals = Object.entries(userMap).map(([paymentPKH, entries]) => {
         const first = entries[0];
         const points = entries.reduce((sum, e) => sum + (e.points || 0), 0);
-        const finalPoints = entries.filter(e => e.isValid).reduce((sum, e) => sum + (e.finalPoints || 0), 0);
-        const completed = entries.filter(e => e.isValid).map(e => e.task);
+        const finalPoints = entries.filter((e) => e.isValid).reduce((sum, e) => sum + (e.finalPoints || 0), 0);
+        const completed = entries.filter((e) => e.isValid).map((e) => e.task);
         // Incompleted: tasks with !isValid plus any missing tasks
-        const presentTasks = new Set(entries.map(e => e.task));
-        const incompleted = [
-            ...entries.filter(e => !e.isValid).map(e => e.task),
-            ...allTasks.filter(t => !presentTasks.has(t)),
-        ];
+        const presentTasks = new Set(entries.map((e) => e.task));
+        const incompleted = [...entries.filter((e) => !e.isValid).map((e) => e.task), ...allTasks.filter((t) => !presentTasks.has(t))];
         return {
             date: first.date,
             paymentPKH: first.paymentPKH,

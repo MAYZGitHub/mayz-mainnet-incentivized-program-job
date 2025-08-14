@@ -34,6 +34,8 @@ export const BASE_URL =
         ? 'https://cardano-preprod.blockfrost.io/api/v0'
         : '';
 
+export const DAPP_API_TOKEN = requireEnv('DAPP_API_TOKEN');
+
 export const DELEGATION_CREATE = 'Delegation - Create';
 export const DELEGATION_DEPOSIT = 'Delegation - Deposit';
 export const SWAPOFFER_CREATE = 'Swap Offer - Create';
@@ -46,3 +48,9 @@ export const REGISTRATION_MIN_GMAYZ = 100;
 export const SWAPOFFER_MIN_ADA = 500;
 
 export const TASK_MAX_POINTS = 4_000;
+
+/**
+ * The start date of the incentivized program (inclusive).
+ * Format: YYYY-MM-DD (ISO 8601)
+ */
+export const INCENTIVIZED_PROGRAM_START_DATE = '2025-08-14';
