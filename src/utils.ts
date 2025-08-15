@@ -65,7 +65,6 @@ export async function isSharedOnXTxHash(walletAddress: string, txHash: string) {
     try {
         const supabase = getSupabaseClient();
 
-        
         const { data, error } = await supabase.from('x_shares').select('user_address').eq('user_address', walletAddress).eq('tx_hash', txHash).single();
 
         if (error) {
@@ -82,20 +81,20 @@ export async function isSharedOnXTxHash(walletAddress: string, txHash: string) {
 export async function saveUserTaskPoints(userTaskPoints: IUserTaskPoints[]) {
     try {
         // Map input objects to the exact user_task_points table schema
-        const mappedRows = userTaskPoints.map(pt => ({
+        const mappedRows = userTaskPoints.map((pt) => ({
             date: pt.date,
-            paymentPKH: pt.paymentPKH,
-            stakePKH: pt.stakePKH,
+            paymentpkh: pt.paymentPKH,
+            stakepkh: pt.stakePKH,
             address: pt.address,
-            gMAYZHeld: pt.gMAYZHeld,
+            gmayzheld: pt.gMAYZHeld,
             multiplier: pt.multiplier,
             task: pt.task,
             // amountUnit: pt.amountUnit,
             amount: pt.amount,
-            currentAmount: pt.currentAmount,
+            currentamount: pt.currentAmount,
             points: pt.points,
-            isValid: pt.isValid,
-            finalPoints: pt.finalPoints,
+            isvalid: pt.isValid,
+            finalpoints: pt.finalPoints,
             // created_at is handled by the DB default
         }));
 
@@ -163,7 +162,6 @@ export function toJson(value: any, replacer?: (this: any, key: string, value: an
         space
     );
 }
-
 
 // Robust UTC date formatting helper
 export function formatDateUTC(date: Date): string {
