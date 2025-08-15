@@ -13,7 +13,7 @@ import {
     SWAPOFFER_CREATE,
     SWAPOFFER_DEPOSIT,
     SWAPOFFER_SWAP_ADA_FT,
-    INCENTIVIZED_PROGRAM_START_DATE
+    INCENTIVIZED_PROGRAM_START_DATE,
 } from './constants.js';
 import { DelegationModel, IDelegation } from './models/delegation.model.js';
 import { FundModel, IFund } from './models/fund.model.js';
@@ -76,9 +76,13 @@ async function main() {
             console.warn(`[GOV DB][WALLET][WARN] No wallet info for PKH: ${paymentPKH}`);
         }
 
-        const txs = await TransactionModel.find({ paymentPKH, type: { $in: relevantTypesInGov }, status: 'confirmed', date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) } }, null, {
-            sort: { date: 1 },
-        });
+        const txs = await TransactionModel.find(
+            { paymentPKH, type: { $in: relevantTypesInGov }, status: 'confirmed', date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) } },
+            null,
+            {
+                sort: { date: 1 },
+            }
+        );
         govTxsByUser[paymentPKH] = txs;
         totalGovTxs += txs.length;
         console.log(`[GOV DB][WALLET] has ${txs.length} relevant txs`);
@@ -126,9 +130,13 @@ async function main() {
         } else {
             console.warn(`[DAPP DB][WALLET][WARN] No wallet info for PKH: ${paymentPKH} - ${walletDoc}`);
         }
-        const txs = await TransactionModel.find({ paymentPKH, type: { $in: relevantTypesInDapp }, status: 'confirmed', date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) } }, null, {
-            sort: { date: 1 },
-        });
+        const txs = await TransactionModel.find(
+            { paymentPKH, type: { $in: relevantTypesInDapp }, status: 'confirmed', date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) } },
+            null,
+            {
+                sort: { date: 1 },
+            }
+        );
         dappTxsByUser[paymentPKH] = txs;
         totalDappTxs += txs.length;
         console.log(`[DAPP DB][WALLET] has ${txs.length} relevant txs`);
@@ -144,8 +152,7 @@ async function main() {
 
     // --- POINTS CALCULATION PHASE ---
 
-
-const userTaskPoints: IUserTaskPoints[] = [];
+    const userTaskPoints: IUserTaskPoints[] = [];
 
     // Main per-user loop
     for (const paymentPKH of allWallets) {
@@ -237,7 +244,7 @@ const userTaskPoints: IUserTaskPoints[] = [];
                         gMAYZHeld,
                         multiplier,
                         task: 'swap_offer',
-                        amountUnit: 'ADA', 
+                        amountUnit: 'ADA',
                         amount: task2Result.amount,
                         currentAmount: task2Result.currentAmount,
                         points: task2Result.points,
@@ -270,7 +277,7 @@ const userTaskPoints: IUserTaskPoints[] = [];
                         gMAYZHeld,
                         multiplier,
                         task: 'hold_ft',
-                        amountUnit: 'ADA',  
+                        amountUnit: 'ADA',
                         amount: task3Result.amount,
                         currentAmount: task3Result.currentAmount,
                         points: task3Result.points,
@@ -296,7 +303,7 @@ const userTaskPoints: IUserTaskPoints[] = [];
                         gMAYZHeld,
                         multiplier,
                         task: 'stake_fund',
-                        amountUnit: 'GMAYZ', 
+                        amountUnit: 'GMAYZ',
                         amount: task4Result.amount,
                         currentAmount: task4Result.currentAmount,
                         points: task4Result.points,
@@ -320,7 +327,14 @@ const userTaskPoints: IUserTaskPoints[] = [];
 
     // --- OUTPUT PHASE ---
     console.log('--- USER TASK POINTS LIST ---');
-    console.table(userTaskPoints);
+    console.table(
+        userTaskPoints.map((entry) => ({
+            ...entry,
+            paymentPKH: entry.paymentPKH.slice(0, 6),
+            stakePKH: entry.stakePKH.slice(0, 6),
+            address: entry.address.slice(0, 6) + '...' + entry.address.slice(-6),
+        }))
+    );
 
     // Save user task points to Supabase
     if (userTaskPoints.length > 0) {
