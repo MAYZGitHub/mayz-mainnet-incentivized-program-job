@@ -198,9 +198,9 @@ const userTaskPoints: IUserTaskPoints[] = [];
 
                     userTaskPoints.push({
                         date: nowDate,
-                        paymentPKH: paymentPKH.slice(0, 6),
-                        stakePKH: walletInfo.stake.slice(0, 6),
-                        address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
+                        paymentPKH: paymentPKH,
+                        stakePKH: walletInfo.stake,
+                        address: walletInfo.address,
                         gMAYZHeld,
                         multiplier,
                         task: 'registration',
@@ -231,9 +231,9 @@ const userTaskPoints: IUserTaskPoints[] = [];
                     const finalPoints = task2Result.points * multiplier;
                     userTaskPoints.push({
                         date: nowDate,
-                        paymentPKH: paymentPKH.slice(0, 6),
-                        stakePKH: walletInfo.stake.slice(0, 6),
-                        address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
+                        paymentPKH: paymentPKH,
+                        stakePKH: walletInfo.stake,
+                        address: walletInfo.address,
                         gMAYZHeld,
                         multiplier,
                         task: 'swap_offer',
@@ -264,9 +264,9 @@ const userTaskPoints: IUserTaskPoints[] = [];
                     const finalPoints = task3Result.points * multiplier;
                     userTaskPoints.push({
                         date: nowDate,
-                        paymentPKH: paymentPKH.slice(0, 6),
-                        stakePKH: walletInfo.stake.slice(0, 6),
-                        address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
+                        paymentPKH: paymentPKH,
+                        stakePKH: walletInfo.stake,
+                        address: walletInfo.address,
                         gMAYZHeld,
                         multiplier,
                         task: 'hold_ft',
@@ -290,9 +290,9 @@ const userTaskPoints: IUserTaskPoints[] = [];
                     const finalPoints = task4Result.points * multiplier;
                     userTaskPoints.push({
                         date: nowDate,
-                        paymentPKH: paymentPKH.slice(0, 6),
-                        stakePKH: walletInfo.stake.slice(0, 6),
-                        address: walletInfo.address.slice(0, 6) + '...' + walletInfo.address.slice(-6),
+                        paymentPKH: paymentPKH,
+                        stakePKH: walletInfo.stake,
+                        address: walletInfo.address,
                         gMAYZHeld,
                         multiplier,
                         task: 'stake_fund',
@@ -363,6 +363,9 @@ const userTaskPoints: IUserTaskPoints[] = [];
     const summaryList = userTotals.sort((a, b) => b.finalPoints - a.finalPoints);
     const printableSummary = summaryList.map((entry) => ({
         ...entry,
+        paymentPKH: entry.paymentPKH.slice(0, 6),
+        stakePKH: entry.stakePKH.slice(0, 6),
+        address: entry.address.slice(0, 6) + '...' + entry.address.slice(-6),
         completed: entry.completed.join(', '),
         incompleted: entry.incompleted.join(', '),
     }));
