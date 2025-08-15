@@ -194,6 +194,9 @@ async function main() {
                 console.log(`[MULTIPLIER] Multiplier applied for ${paymentPKH}, gMAYZ held = ${gMAYZHeld}, multiplier = ${multiplier}`);
             }
 
+            // --- IS REGISTERED ---
+            let isRegistered = false;
+
             try {
                 // --- REGISTRATION (Task 1) ---
                 const task1Txs = (govTxsByUser[paymentPKH] || []).filter((tx) => tx.type === SWAPOFFER_SWAP_ADA_FT);
@@ -202,6 +205,7 @@ async function main() {
                 if (task1Txs.length > 0) {
                     const task1Result = await task01_calculateRegistration(paymentPKH, walletInfo.address, gMAYZHeld, protocolInGov.pdpSwapOfferValidator_AddressMainnet, task1Txs);
                     const finalPoints = task1Result.points * multiplier;
+                    isRegistered = task1Result.isValid;
 
                     userTaskPoints.push({
                         date: nowDate,
@@ -248,8 +252,8 @@ async function main() {
                         amount: task2Result.amount,
                         currentAmount: task2Result.currentAmount,
                         points: task2Result.points,
-                        isValid: task2Result.isValid,
-                        finalPoints,
+                        isValid: task2Result.isValid && isRegistered,
+                        finalPoints: task2Result.isValid && isRegistered ? finalPoints : 0,
                     });
                 }
             } catch (e: any) {
@@ -281,8 +285,8 @@ async function main() {
                         amount: task3Result.amount,
                         currentAmount: task3Result.currentAmount,
                         points: task3Result.points,
-                        isValid: task3Result.isValid,
-                        finalPoints,
+                        isValid: task3Result.isValid && isRegistered,
+                        finalPoints: task3Result.isValid && isRegistered ? finalPoints : 0,
                     });
                 }
             } catch (e: any) {
@@ -307,8 +311,8 @@ async function main() {
                         amount: task4Result.amount,
                         currentAmount: task4Result.currentAmount,
                         points: task4Result.points,
-                        isValid: task4Result.isValid,
-                        finalPoints,
+                        isValid: task4Result.isValid && isRegistered,
+                        finalPoints: task4Result.isValid && isRegistered ? finalPoints : 0,
                     });
                 }
             } catch (e: any) {
