@@ -31,7 +31,7 @@ Before awarding points, the system:
 
 ### Task 1: Registration ($gMAYZ Purchase)
 **Step-by-step logic:**
-1. Search for all `Swap Offer - Buy FT` transactions with status `confirmed` in the Governance DB for the user, dated after the program start (e.g., `2024-01-01`).
+1. Search for all `Swap Offer - Buy FT` transactions with status `confirmed` in the Governance DB for the user, dated after the program start (e.g., `2025-08-15`).
 2. For each transaction:
    - Check on-chain (via Blockfrost) that the transaction is real and confirmed.
    - Parse the datum and redeemer to determine the exact amount of $gMAYZ bought (net of commission/fee).
@@ -45,7 +45,7 @@ Before awarding points, the system:
 ### Task 2: Swap Offers (Detailed Calculation)
 
 **Step-by-step logic:**
-1. Search for all `Swap Offer - Create` and `Swap Offer - Deposit` transactions with status `confirmed` in the Dapp DB for the user, dated after the program start (e.g., `2024-01-01`).
+1. Search for all `Swap Offer - Create` and `Swap Offer - Deposit` transactions with status `confirmed` in the Dapp DB for the user, dated after the program start (e.g., `2025-08-15`).
 2. For each relevant transaction:
    - Confirm the transaction is real, confirmed, and originated from the user's wallet (Blockfrost check).
    - Parse the datum to extract the offered amount of FT and ADA (if any) for that swap offer.
@@ -74,7 +74,7 @@ Before awarding points, the system:
 ### Task 3: Hold Fund Tokens (FT) – Detailed Calculation
 
 **Step-by-step logic:**
-1. Search for all `Swap Offer - Buy FT` transactions with status `confirmed` in the Dapp DB for the user, dated after the program start (e.g., `2024-01-01`). Only transactions for official funds (excluding $gMAYZ fund) are considered.
+1. Search for all `Swap Offer - Buy FT` transactions with status `confirmed` in the Dapp DB for the user, dated after the program start (e.g., `2025-08-15`). Only transactions for official funds (excluding $gMAYZ fund) are considered.
 2. For each transaction:
    - Confirm the transaction is real, confirmed, and originated from the user's wallet (Blockfrost check).
    - Parse the datum and redeemer to determine the **net FT amount bought** (subtracting any commission/fee).
@@ -106,7 +106,7 @@ Before awarding points, the system:
 ### Task 4: Stake $gMAYZ – Detailed Calculation
 
 **Step-by-step logic:**
-1. Search for all `Delegation - Create` and `Delegation - Deposit` transactions with status `confirmed` in the Dapp DB for the user, dated after the program start (e.g., `2024-01-01`).
+1. Search for all `Delegation - Create` and `Delegation - Deposit` transactions with status `confirmed` in the Dapp DB for the user, dated after the program start (e.g., `2025-08-15`).
 2. For each transaction:
    - Confirm the transaction is real, confirmed, and originated from the user's wallet (Blockfrost check).
    - Parse the datum and redeemer to determine the exact amount of $gMAYZ staked (net of commission/fee, if applicable).

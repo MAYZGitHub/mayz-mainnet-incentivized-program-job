@@ -53,4 +53,4 @@ export const TASK_MAX_POINTS = 4_000;
  * The start date of the incentivized program (inclusive).
  * Format: YYYY-MM-DD (ISO 8601)
  */
-export const INCENTIVIZED_PROGRAM_START_DATE = '2025-08-14';
+export const INCENTIVIZED_PROGRAM_START_DATE = '2025-08-15';

@@ -90,7 +90,7 @@ export async function saveUserTaskPoints(userTaskPoints: IUserTaskPoints[]) {
             gMAYZHeld: pt.gMAYZHeld,
             multiplier: pt.multiplier,
             task: pt.task,
-            amountUnit: pt.amountUnit,
+            // amountUnit: pt.amountUnit,
             amount: pt.amount,
             currentAmount: pt.currentAmount,
             points: pt.points,
