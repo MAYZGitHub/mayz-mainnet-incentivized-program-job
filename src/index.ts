@@ -21,7 +21,7 @@ import { ProtocolModel } from './models/protocol.model.js';
 import { ISwapOffer, SwapOfferModel } from './models/swap-offer.model.js';
 import { ITransaction, TransactionModel } from './models/transaction.model.js';
 import { WalletModel } from './models/wallet.model.js';
-import { connectDb, disconnectDb, saveUserTaskPoints } from './utils.js';
+import { connectDb, disconnectDb, saveUserTaskPoints, deleteUserTaskPointsByDate } from './utils.js';
 import { IUserTaskPoints } from './types.js';
 
 // --- MAYZ Incentivized Program Cron Job ---
@@ -339,10 +339,12 @@ async function main() {
     // Save user task points to Supabase
     if (userTaskPoints.length > 0) {
         try {
+            // Delete all entries for this date before inserting new ones
+            await deleteUserTaskPointsByDate(nowDate);
             await saveUserTaskPoints(userTaskPoints);
-            console.log(`[SUPABASE] Successfully saved ${userTaskPoints.length} user task points.`);
+            console.log(`[SUPABASE] Successfully deleted and saved ${userTaskPoints.length} user task points for ${nowDate}.`);
         } catch (err) {
-            console.error(`[SUPABASE] Error saving user task points:`, err);
+            console.error(`[SUPABASE] Error deleting or saving user task points:`, err);
         }
     }
 

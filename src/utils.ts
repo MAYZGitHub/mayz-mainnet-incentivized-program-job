@@ -78,11 +78,27 @@ export async function isSharedOnXTxHash(walletAddress: string, txHash: string) {
     }
 }
 
-export async function saveUserTaskPoints(userTaskPoints: IUserTaskPoints[]) {
+export async function deleteUserTaskPointsByDate(date: string) {
+    try {
+        const supabase = getSupabaseClient();
+        const { error } = await supabase
+            .from('user_task_points')
+            .delete()
+            .eq('date', date);
+        if (error) {
+            throw new Error(`Error deleting user task points for date ${date}: ${error}`);
+        }
+    } catch (error) {
+        console.error(`Error deleting user task points for date ${date}:`, error);
+        throw error;
+    }
+}
+
+export async function saveUserTaskPoints(userTaskPoints: IUserTaskPoints[], date?: string) {
     try {
         // Map input objects to the exact user_task_points table schema
         const mappedRows = userTaskPoints.map((pt) => ({
-            date: pt.date,
+            date: date || pt.date,
             paymentpkh: pt.paymentPKH,
             stakepkh: pt.stakePKH,
             address: pt.address,
