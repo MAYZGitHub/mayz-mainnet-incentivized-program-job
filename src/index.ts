@@ -21,7 +21,7 @@ import { ProtocolModel } from './models/protocol.model.js';
 import { ISwapOffer, SwapOfferModel } from './models/swap-offer.model.js';
 import { ITransaction, TransactionModel } from './models/transaction.model.js';
 import { WalletModel } from './models/wallet.model.js';
-import { connectDb, disconnectDb } from './utils.js';
+import { connectDb, disconnectDb, saveUserTaskPoints } from './utils.js';
 import { IUserTaskPoints } from './types.js';
 
 // --- MAYZ Incentivized Program Cron Job ---
@@ -325,7 +325,7 @@ const userTaskPoints: IUserTaskPoints[] = [];
     // Save user task points to Supabase
     if (userTaskPoints.length > 0) {
         try {
-            // await saveUserTaskPoints(userTaskPoints);
+            await saveUserTaskPoints(userTaskPoints);
             console.log(`[SUPABASE] Successfully saved ${userTaskPoints.length} user task points.`);
         } catch (err) {
             console.error(`[SUPABASE] Error saving user task points:`, err);
