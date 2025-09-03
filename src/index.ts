@@ -375,7 +375,10 @@ async function main() {
         const first = entries[0];
         const points = entries.reduce((sum, e) => sum + (e.points || 0), 0);
         const finalPoints = entries.filter((e) => e.isValid).reduce((sum, e) => sum + (e.finalPoints || 0), 0);
-        const completed = entries.filter((e) => e.isValid).map((e) => e.task);
+        const completed = allTasks.filter((t) => {
+            const entry = entries.find((e) => e.task === t);
+            return entry && entry.isValid;
+        });
         // Incompleted: tasks with !isValid plus any missing tasks
         const incompleted = allTasks.filter((t) => {
             const entry = entries.find((e) => e.task === t);
