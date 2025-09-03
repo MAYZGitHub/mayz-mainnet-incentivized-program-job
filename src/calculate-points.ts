@@ -36,11 +36,41 @@ async function checkInputFromWallet(data: any, walletAddress: string): Promise<b
     return hasInputFromWallet;
 }
 
+// Helper: Calculate total gMAYZ owned by a user across Governance swap offers and Dapp delegations
+export function calculateGMAYZOwn(paymentPKH: string, gMAYZHeld: number, govSwapOffers: ISwapOffer[], dappDelegations: IDelegation[]): number {
+    // Sum gMAYZ available in Governance swap offers for this user
+    let fromOffers = 0;
+    const userGMAYZOffers = govSwapOffers.filter((o) => o.sodSellerPaymentPKH === paymentPKH );
+    for (const offer of userGMAYZOffers) {
+        try {
+            const v = Number(offer.sodAmount_FT_Available)
+            fromOffers += v / 1_000_000;
+        } catch (e: any) {
+            console.error(`[GMAYZOwn][ERROR] Offer parse error for ${paymentPKH}: ${e.message}`);
+        }
+    }
+
+    // Sum gMAYZ staked in Dapp delegations for this user
+    let fromDelegations = 0;
+    const userDelegations = dappDelegations.filter((d) => d.ddDelegatorPaymentPKH === paymentPKH);
+    for (const d of userDelegations) {
+        try {
+            const v = Number(d.ddStaked)
+            fromOffers += v / 1_000_000;
+        } catch (e: any) {
+            console.error(`[GMAYZOwn][ERROR] Delegation parse error for ${paymentPKH}: ${e.message}`);
+        }
+    }
+
+    const total = gMAYZHeld + fromOffers + fromDelegations;
+    console.log(`[GMAYZOwn] ${paymentPKH} gMAYZHeld=${gMAYZHeld}, gov swaps=${fromOffers}, dapp delegations=${fromDelegations}, total=${total} gMAYZ`);
+    return total;
+}
 // Modular per-task functions
 export async function task01_calculateRegistration(
     paymentPKH: string,
     walletAddress: string,
-    gMAYZHeld: number,
+    gMAYZOwn: number,
     swapOfferValidatorAddress: string,
     task1Txs: ITransaction[]
 ): Promise<{ amount: number; currentAmount: number; isValid: boolean; points: number }> {
@@ -101,7 +131,7 @@ export async function task01_calculateRegistration(
     }
     console.log(`\n[TASK1] Calculating points for ${paymentPKH}`);
     const amount = totalGMAYZ;
-    const currentAmount = gMAYZHeld;
+    const currentAmount = gMAYZOwn;
     const minRequired = REGISTRATION_MIN_GMAYZ;
     const minAmount = Math.min(amount, currentAmount);
     const points = 0;
@@ -190,7 +220,7 @@ export async function task02_calculateSwapOffers(
                     let ftAda = 0;
                     if (ftAmount > 0) {
                         const historicPrices = await getTokenHistoricPricesInLovelace(ftUnit);
-                        const priceObj = historicPrices.find(p => formatDateUTC(new Date(Number(p.date))) === txDate);
+                        const priceObj = historicPrices.find((p) => formatDateUTC(new Date(Number(p.date))) === txDate);
                         if (!priceObj) throw new Error(`No historic price for ${ftUnit} on ${txDate}`);
                         ftAda = (ftAmount * Number(priceObj.price)) / 1_000_000 / 1_000_000;
                         amount += ftAda;
@@ -250,7 +280,7 @@ export async function task02_calculateSwapOffers(
                     let ftAda = 0;
                     if (redeemerObj.rdNewDeposit_FT > 0n && ftUnit) {
                         const historicPrices = await getTokenHistoricPricesInLovelace(ftUnit);
-                        const priceObj = historicPrices.find(p => formatDateUTC(new Date(Number(p.date))) === txDate);
+                        const priceObj = historicPrices.find((p) => formatDateUTC(new Date(Number(p.date))) === txDate);
                         if (!priceObj) throw new Error(`No historic price for ${ftUnit} on ${txDate}`);
                         ftAda = (Number(redeemerObj.rdNewDeposit_FT) * Number(priceObj.price)) / 1_000_000 / 1_000_000;
                         amount += ftAda;
@@ -310,7 +340,7 @@ export async function task02_calculateSwapOffers(
     // const minAmount = Math.min(amount, currentAmount);
     // Desde ahora, voy a respectar el valor de entrada para ver si entro con m;as de 500 ADA
     // Y al precio de cada momento, para ser justo con el usuario si los precios cambian
-    // Y con respecto a mantenerlas activas, solo voy a verificar que el valor total de las 
+    // Y con respecto a mantenerlas activas, solo voy a verificar que el valor total de las
     // swap offers activas sea mayor a 0 ADA, o sea, que haya algo
     const minAmount = amount;
     if (minAmount < minRequired) {
