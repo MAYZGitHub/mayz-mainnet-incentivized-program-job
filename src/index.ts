@@ -377,8 +377,10 @@ async function main() {
         const finalPoints = entries.filter((e) => e.isValid).reduce((sum, e) => sum + (e.finalPoints || 0), 0);
         const completed = entries.filter((e) => e.isValid).map((e) => e.task);
         // Incompleted: tasks with !isValid plus any missing tasks
-        const presentTasks = new Set(entries.map((e) => e.task));
-        const incompleted = [...entries.filter((e) => !e.isValid).map((e) => e.task), ...allTasks.filter((t) => !presentTasks.has(t))];
+        const incompleted = allTasks.filter((t) => {
+            const entry = entries.find((e) => e.task === t);
+            return !entry || !entry.isValid;
+        });
         return {
             date: first.date,
             paymentPKH: first.paymentPKH,
