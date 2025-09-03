@@ -33,14 +33,14 @@ Before awarding points, the system:
 **Step-by-step logic:**
 1. Search for all `Swap Offer - Buy FT` transactions with status `confirmed` in the Governance DB for the user, dated after the program start (e.g., `2025-08-15`).
 2. For each transaction:
-   - Check on-chain (via Blockfrost) that the transaction is real and confirmed.
+   - Check on-chain (via Blockfrost) that the transaction is real, confirmed.
    - Parse the datum and redeemer to determine the exact amount of $gMAYZ bought (net of commission/fee).
    - Verify that the transaction is for the official $gMAYZ fund (using the correct fund policy ID).
    - Calculate the **net amount received**: total $gMAYZ bought minus any FT fee paid.
 3. Sum up the net $gMAYZ received across all valid transactions.
 4. If the user has **not bought enough $gMAYZ** (total net < 100 $gMAYZ), the task is marked as **incomplete**.
-5. If the user has bought enough $gMAYZ but does **not** have at least 100 $gMAYZ in their wallet at the snapshot (each day is recalculated until the end of the campaign), the task is marked as **incomplete**.
-6. If the user has bought enough $gMAYZ and still holds at least 100 $gMAYZ in their wallet at the snapshot, the task is marked as **completed** and points are awarded.
+5. Determine the user's $gMAYZ **Owned** at the snapshot: `Owned = Held in wallet + gMAYZ listed in active Governance swap offers (FT available) + gMAYZ staked in active Dapp delegations`.
+6. The task is **completed** if both are true: (a) total net bought ≥ 100 and (b) $gMAYZ Owned ≥ 100 at the snapshot. Otherwise, it is **incomplete**.
 
 ### Task 2: Swap Offers (Detailed Calculation)
 
@@ -141,8 +141,9 @@ Before awarding points, the system:
 ---
 
 ## 3. Points Multiplier
-- Total score × amount of $gMAYZ held (up to 1,000 units).
-- All holdings are snapshot at campaign end.
+- Total score × amount of $gMAYZ **Owned** (up to 1,000 units).
+- Owned = Held in wallet + in active Governance swap offers (FT available) + staked in active Dapp delegations.
+- Ownership is snapshotted at campaign end.
 
 ---
 
