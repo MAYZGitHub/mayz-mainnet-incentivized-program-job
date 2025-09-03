@@ -1,6 +1,6 @@
 // Mainnet Incentivized Program Job Script (TypeScript)
 import axios from 'axios';
-import { task01_calculateRegistration, task02_calculateSwapOffers, task03_calculateHoldFTPoints, task04_calculateStake } from './calculate-points.js';
+import { calculateGMAYZOwn, task01_calculateRegistration, task02_calculateSwapOffers, task03_calculateHoldFTPoints, task04_calculateStake } from './calculate-points.js';
 import {
     BASE_URL,
     BLOCKFROST_API_KEY,
@@ -50,6 +50,9 @@ async function main() {
     const fundGMAYZ: IFund | null = await FundModel.findOne({ fdFundPolicy_CS: GMAYZ_FUND_POLICY_CS });
     if (!fundGMAYZ || !fundGMAYZ.fdFundPolicy_CS) throw new Error('GMAYZ Fund not found or policy CS missing in Governance DB');
     let userWalletInfo: Record<string, { address: string; stake: string }> = {};
+    // --- LOAD GOV SWAP OFFERS (for calculateGMAYZOwn) ---
+    const govSwapOffers: ISwapOffer[] = await SwapOfferModel.find({});
+    console.log(`[GOV DB] Loaded ${govSwapOffers.length} swap offers from DB`);
     // Only process wallets that have at least one tx of a relevant type (using real constants)
     const relevantTypesInGov = [SWAPOFFER_SWAP_ADA_FT];
     // Aggregate unique users from governance transactions with relevant types
@@ -59,7 +62,7 @@ async function main() {
         date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) },
     });
     console.log(`[GOV DB] Found ${govUsers.length} unique wallets with relevant tx types in Governance DB`);
-    // Fetch all relevant governance transactions per user
+    // Fetch gov relevant governance transactions per user
     const govTxsByUser: Record<string, ITransaction[]> = {};
     let totalGovTxs = 0;
     for (const paymentPKH of govUsers) {
@@ -99,12 +102,12 @@ async function main() {
     if (!protocolInDapp) throw new Error('Protocol not found in Dapp DB');
     const funds: IFund[] = await FundModel.find();
     console.log(`[DAPP DB] Found ${funds.length} funds in Dapp DB`);
-    // --- LOAD ALL SWAP OFFERS (for swap offers task) ---
-    const allSwapOffers: ISwapOffer[] = await SwapOfferModel.find({});
-    console.log(`[DAPP DB] Loaded ${allSwapOffers.length} swap offers from DB`);
-    // --- LOAD ALL DELEGATIONS (for staking task) ---
-    const allDelegations: IDelegation[] = await DelegationModel.find({});
-    console.log(`[DAPP DB] Loaded ${allDelegations.length} delegations from DB`);
+    // --- LOAD DAPP SWAP OFFERS (for swap offers task) ---
+    const dappSwapOffers: ISwapOffer[] = await SwapOfferModel.find({});
+    console.log(`[DAPP DB] Loaded ${dappSwapOffers.length} swap offers from DB`);
+    // --- LOAD DAPP DELEGATIONS (for staking task) ---
+    const dappDelegations: IDelegation[] = await DelegationModel.find({});
+    console.log(`[DAPP DB] Loaded ${dappDelegations.length} delegations from DB`);
     // Only process wallets that have at least one tx of a relevant type (using real constants)
     const relevantTypesInDapp = [DELEGATION_CREATE, DELEGATION_DEPOSIT, SWAPOFFER_CREATE, SWAPOFFER_DEPOSIT, SWAPOFFER_SWAP_ADA_FT];
     // Aggregate unique users from dapp transactions with relevant types
@@ -114,7 +117,7 @@ async function main() {
         date: { $gte: new Date(INCENTIVIZED_PROGRAM_START_DATE) },
     });
     console.log(`[DAPP DB] Found ${dappUsers.length} unique wallets with relevant tx types in Dapp DB`);
-    // Fetch all relevant dapp transactions per user
+    // Fetch dapp relevant dapp transactions per user
     const dappTxsByUser: Record<string, ITransaction[]> = {};
     let totalDappTxs = 0;
     for (const paymentPKH of dappUsers) {
@@ -161,6 +164,11 @@ async function main() {
 
             const walletInfo = userWalletInfo[paymentPKH];
 
+            if (!walletInfo || !walletInfo.address) {
+                console.error(`[WALLET][ERROR] No address for PKH: ${paymentPKH}`);
+                continue;
+            }
+
             // Fetch current wallet balances for all FT tokens
             let addressInfo;
             try {
@@ -169,29 +177,33 @@ async function main() {
             } catch (e: any) {
                 throw new Error(`Blockfrost error for Wallet balance: ${e.message}`);
             }
+            if (!addressInfo || !addressInfo.data || !addressInfo.data.amount) {
+                console.error(`[WALLET][ERROR] No address info for PKH: ${paymentPKH}`);
+                continue;
+            }
             const walletAmounts: Record<string, bigint> = {};
             for (const a of addressInfo.data.amount || []) {
                 walletAmounts[a.unit] = BigInt(a.quantity);
             }
 
-            // Fetch real gMAYZ held by the user
-            let gMAYZHeld = 0;
-            if (walletInfo && walletInfo.address) {
-                // gMAYZHeld = await getGMAYZHeld(walletInfo.address, fundGMAYZ.fdFundPolicy_CS);
-                const gmayzAssetHex = '674d41595a'; // 'GMAYZ' in hex, adjust if needed
-                const gmayzUnit = `${fundGMAYZ.fdFundPolicy_CS}${gmayzAssetHex}`;
-                if (!walletAmounts[gmayzUnit]) walletAmounts[gmayzUnit] = 0n;
-                gMAYZHeld = Number(walletAmounts[gmayzUnit]) / 1_000_000;
-                console.log(`[WALLET] gMAYZ held for ${paymentPKH}: ${gMAYZHeld}`);
-            } else {
-                console.warn(`[WALLET][WARN] No address for PKH: ${paymentPKH}, gMAYZ held not calculated`);
-            }
+            // Fetch real gMAYZ held by the user and gMAYZ owned by the user
+            let gMAYZHeld = 0
+            let gMAYZOwn = 0
 
+            const gmayzAssetHex = '674d41595a'; // 'GMAYZ' in hex, adjust if needed
+            const gmayzUnit = `${fundGMAYZ.fdFundPolicy_CS}${gmayzAssetHex}`;
+            if (!walletAmounts[gmayzUnit]) walletAmounts[gmayzUnit] = 0n;
+            gMAYZHeld = Number(walletAmounts[gmayzUnit]) / 1_000_000;
+            console.log(`[WALLET] gMAYZ held for ${paymentPKH}: ${gMAYZHeld}`);
+
+            gMAYZOwn = calculateGMAYZOwn(paymentPKH, gMAYZHeld, govSwapOffers, dappDelegations);
+            console.log(`[WALLET] gMAYZ owned for ${paymentPKH}: ${gMAYZOwn}`);
+        
             let multiplier = 1;
-            if (gMAYZHeld > 0) {
+            if (gMAYZOwn > 0) {
                 // --- MULTIPLIER ---
-                multiplier = Math.max(Math.min(gMAYZHeld, GMAYZ_MAX_MULTIPLIER), 1);
-                console.log(`[MULTIPLIER] Multiplier applied for ${paymentPKH}, gMAYZ held = ${gMAYZHeld}, multiplier = ${multiplier}`);
+                multiplier = Math.max(Math.min(gMAYZOwn, GMAYZ_MAX_MULTIPLIER), 1);
+                console.log(`[MULTIPLIER] Multiplier applied for ${paymentPKH}, gMAYZ owned = ${gMAYZOwn}, multiplier = ${multiplier}`);
             }
 
             // --- IS REGISTERED ---
@@ -203,7 +215,7 @@ async function main() {
                 console.log(`\n[TASK1] Found ${task1Txs.length} txs for ${paymentPKH}`);
 
                 if (task1Txs.length > 0) {
-                    const task1Result = await task01_calculateRegistration(paymentPKH, walletInfo.address, gMAYZHeld, protocolInGov.pdpSwapOfferValidator_AddressMainnet, task1Txs);
+                    const task1Result = await task01_calculateRegistration(paymentPKH, walletInfo.address, gMAYZOwn, protocolInGov.pdpSwapOfferValidator_AddressMainnet, task1Txs);
                     const finalPoints = task1Result.points * multiplier;
                     isRegistered = task1Result.isValid;
 
@@ -212,7 +224,7 @@ async function main() {
                         paymentPKH: paymentPKH,
                         stakePKH: walletInfo.stake,
                         address: walletInfo.address,
-                        gMAYZHeld,
+                        gMAYZHeld: gMAYZOwn,
                         multiplier,
                         task: 'registration',
                         amountUnit: 'GMAYZ',
@@ -236,7 +248,7 @@ async function main() {
                         walletInfo.address,
                         protocolInDapp.pdpSwapOfferValidator_AddressMainnet,
                         funds,
-                        allSwapOffers,
+                        dappSwapOffers,
                         task2Txs
                     );
                     const finalPoints = task2Result.points * multiplier;
@@ -245,7 +257,7 @@ async function main() {
                         paymentPKH: paymentPKH,
                         stakePKH: walletInfo.stake,
                         address: walletInfo.address,
-                        gMAYZHeld,
+                        gMAYZHeld: gMAYZOwn,
                         multiplier,
                         task: 'swap_offer',
                         amountUnit: 'ADA',
@@ -278,7 +290,7 @@ async function main() {
                         paymentPKH: paymentPKH,
                         stakePKH: walletInfo.stake,
                         address: walletInfo.address,
-                        gMAYZHeld,
+                        gMAYZHeld: gMAYZOwn,
                         multiplier,
                         task: 'hold_ft',
                         amountUnit: 'ADA',
@@ -297,14 +309,14 @@ async function main() {
                 const task4Txs = (dappTxsByUser[paymentPKH] || []).filter((tx) => tx.type === DELEGATION_CREATE || tx.type === DELEGATION_DEPOSIT);
                 console.log(`\n[TASK4] Found ${task4Txs.length} txs for ${paymentPKH}`);
                 if (task4Txs.length > 0) {
-                    const task4Result = await task04_calculateStake(paymentPKH, walletInfo.address, allDelegations, protocolInDapp.pdpDelegationValidator_AddressMainnet, task4Txs);
+                    const task4Result = await task04_calculateStake(paymentPKH, walletInfo.address, dappDelegations, protocolInDapp.pdpDelegationValidator_AddressMainnet, task4Txs);
                     const finalPoints = task4Result.points * multiplier;
                     userTaskPoints.push({
                         date: nowDate,
                         paymentPKH: paymentPKH,
                         stakePKH: walletInfo.stake,
                         address: walletInfo.address,
-                        gMAYZHeld,
+                        gMAYZHeld: gMAYZOwn,
                         multiplier,
                         task: 'stake_fund',
                         amountUnit: 'GMAYZ',
