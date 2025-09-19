@@ -29,10 +29,10 @@ export const BASE_URL =
     process.env.NEXT_PUBLIC_CARDANO_NET?.toLowerCase() === 'mainnet'
         ? 'https://cardano-mainnet.blockfrost.io/api/v0'
         : process.env.NEXT_PUBLIC_CARDANO_NET?.toLowerCase() === 'preview'
-        ? 'https://cardano-preview.blockfrost.io/api/v0'
-        : process.env.NEXT_PUBLIC_CARDANO_NET?.toLowerCase() === 'preprod'
-        ? 'https://cardano-preprod.blockfrost.io/api/v0'
-        : '';
+            ? 'https://cardano-preview.blockfrost.io/api/v0'
+            : process.env.NEXT_PUBLIC_CARDANO_NET?.toLowerCase() === 'preprod'
+                ? 'https://cardano-preprod.blockfrost.io/api/v0'
+                : '';
 
 export const DAPP_API_TOKEN = requireEnv('DAPP_API_TOKEN');
 

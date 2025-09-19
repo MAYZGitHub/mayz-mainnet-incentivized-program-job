@@ -40,7 +40,7 @@ async function checkInputFromWallet(data: any, walletAddress: string): Promise<b
 export function calculateGMAYZOwn(paymentPKH: string, gMAYZHeld: number, govSwapOffers: ISwapOffer[], dappDelegations: IDelegation[]): number {
     // Sum gMAYZ available in Governance swap offers for this user
     let fromOffers = 0;
-    const userGMAYZOffers = govSwapOffers.filter((o) => o.sodSellerPaymentPKH === paymentPKH );
+    const userGMAYZOffers = govSwapOffers.filter((o) => o.sodSellerPaymentPKH === paymentPKH);
     for (const offer of userGMAYZOffers) {
         try {
             const v = Number(offer.sodAmount_FT_Available)

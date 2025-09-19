@@ -198,7 +198,7 @@ async function main() {
 
             gMAYZOwn = calculateGMAYZOwn(paymentPKH, gMAYZHeld, govSwapOffers, dappDelegations);
             console.log(`[WALLET] gMAYZ owned for ${paymentPKH}: ${gMAYZOwn}`);
-        
+
             let multiplier = 1;
             if (gMAYZOwn > 0) {
                 // --- MULTIPLIER ---
